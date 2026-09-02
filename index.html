@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ausentismo y Deserción por Programa · UNIMINUTO Sede Tolima-Huila</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="tag">UNIMINUTO · Sede Tolima-Huila</div>
+      <h1>Ausentismo y Deserción por Programa</h1>
+      <div class="sub">Histórico por programa académico, 2010-1 a 2026-2</div>
+    </div>
+    <!-- los grupos de filtros se generan aquí desde app.js -->
+    <button class="clear-all" id="clear-all">Limpiar todos los filtros</button>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div>
+        <h2>Análisis de <span id="metric-title">Ausentismo</span> por programa</h2>
+        <div class="desc">Usa los filtros de la izquierda (Año, Semestre, Centro Universitario, Programa) para explorar el detalle por programa académico.</div>
+      </div>
+      <div class="as-of">Corte: 31 de agosto de 2026</div>
+    </div>
+
+    <div class="metric-toggle">
+      <button id="tab-ausentismo" class="active">Ausentismo</button>
+      <button id="tab-desercion">Deserción</button>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">Tasa promedio</div>
+        <div class="num" id="kpi-tasa">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Total <span id="metric-word">ausentes</span></div>
+        <div class="num" id="kpi-casos">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">CU con mayor tasa</div>
+        <div class="num" id="kpi-cu" style="font-size:17px">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Programas críticos</div>
+        <div class="num" id="kpi-criticos">—</div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="empty-state" style="display:none">
+      No hay registros para la combinación de filtros seleccionada.
+    </div>
+
+    <div id="content-body">
+      <div class="grid2">
+        <div class="panel">
+          <h3>Evolución histórica por Centro Universitario</h3>
+          <div class="panel-sub">Calculada agregando todos los programas de cada CU</div>
+          <div class="chart-wrap"><canvas id="chart-evolucion"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Promedio por CU</h3>
+          <div class="panel-sub">Según filtros seleccionados</div>
+          <div class="chart-wrap"><canvas id="chart-cu-bar"></canvas></div>
+        </div>
+      </div>
+
+      <div class="section-title">🚨 Programas críticos <span class="pill">Tasa alta + tendencia creciente</span></div>
+      <div class="alerts" id="critical-alerts"></div>
+
+      <div class="section-title">✅ Programas en mejora <span class="pill">Tendencia decreciente sostenida</span></div>
+      <div class="alerts" id="improving-alerts"></div>
+
+      <div class="table-panel">
+        <h3 style="margin-bottom:14px">Detalle por programa</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr id="header-row"></tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <footer class="credit">Tablero generado a partir de la base de datos institucional SAP · Ausentismo y deserción por programa académico.</footer>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

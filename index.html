@@ -34,21 +34,25 @@
     </div>
 
     <div class="kpi-row">
-      <div class="kpi">
-        <div class="label">Tasa promedio</div>
-        <div class="num" id="kpi-tasa">—</div>
-      </div>
-      <div class="kpi">
+      <div class="kpi kpi-danger">
         <div class="label">Total <span id="metric-word">ausentes</span></div>
         <div class="num" id="kpi-casos">—</div>
       </div>
-      <div class="kpi">
+      <div class="kpi kpi-ink">
         <div class="label">CU con mayor tasa</div>
         <div class="num" id="kpi-cu" style="font-size:17px">—</div>
       </div>
-      <div class="kpi">
+      <div class="kpi kpi-teal">
         <div class="label">Programas críticos</div>
         <div class="num" id="kpi-criticos">—</div>
+      </div>
+      <div class="kpi kpi-danger">
+        <div class="label">Programa con mayor tasa</div>
+        <div class="num" id="kpi-prog-max" style="font-size:14px;line-height:1.35">—</div>
+      </div>
+      <div class="kpi kpi-teal">
+        <div class="label">Programa con menor tasa</div>
+        <div class="num" id="kpi-prog-min" style="font-size:14px;line-height:1.35">—</div>
       </div>
     </div>
 
@@ -57,17 +61,10 @@
     </div>
 
     <div id="content-body">
-      <div class="grid2">
-        <div class="panel">
-          <h3>Evolución histórica por Centro Universitario</h3>
-          <div class="panel-sub">Calculada agregando todos los programas de cada CU</div>
-          <div class="chart-wrap"><canvas id="chart-evolucion"></canvas></div>
-        </div>
-        <div class="panel">
-          <h3>Promedio por CU</h3>
-          <div class="panel-sub">Según filtros seleccionados</div>
-          <div class="chart-wrap"><canvas id="chart-cu-bar"></canvas></div>
-        </div>
+      <div class="panel panel-full">
+        <h3>Evolución histórica por Centro Universitario</h3>
+        <div class="panel-sub">Calculada agregando todos los programas de cada CU</div>
+        <div class="chart-wrap"><canvas id="chart-evolucion"></canvas></div>
       </div>
 
       <div class="section-title">🚨 Programas críticos <span class="pill">Tasa alta + tendencia creciente</span></div>

@@ -10,9 +10,7 @@ const PALETTE = {
 const CU_COLORS = {
   'Sede Tolima-Huila': '#16324F', 'Ibagué': '#E2962B', 'Neiva': '#2F7A6D',
   'Garzón': '#C1432B', 'Pitalito': '#8A5FBF', 'Lérida': '#5294E2',
-  'La Dorada': '#E84393', 'Líbano': '#7A9E7E', 'Fresno': '#B08968',
-  'Florencia': '#6A994E', 'Mocoa': '#9D8DF1', 'Puerto Boyacá': '#D4A373',
-  'Mariquita': '#457B9D', 'Cajamarca': '#A44A3F', 'Planadas': '#6C757D'
+  'La Dorada': '#E84393', 'Planadas': '#6C757D'
 };
 const RECENT_N = 8;
 
@@ -212,8 +210,9 @@ function render() {
   document.getElementById('content-body').style.display = 'block';
   document.getElementById('empty-state').style.display = 'none';
 
-  // Evolución: sin CU seleccionado se muestra el total de la Sede; si se elige alguno, esos.
-  const evoKeys = state.cu.size ? [...state.cu] : ['Sede Tolima-Huila'];
+  // Evolución: sin CU seleccionado se muestra el histórico de todos los CU por separado
+  // (el agregado "Sede Tolima-Huila" ya está disponible en el tablero de nivel CU)
+  const evoKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
   const evoDatasets = evoKeys.map(k => ({
     label: k,
     data: idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null),
@@ -237,7 +236,7 @@ function render() {
     }
   });
 
-  // Comparativo por CU
+  // Promedio por CU (sin gráfica; se usa para el KPI "CU con mayor tasa")
   const barKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
   const avgByCu = barKeys.map(k => {
     const vals = idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null).filter(v => v !== null && v !== undefined);
@@ -245,31 +244,9 @@ function render() {
     return { k, avg };
   }).sort((a, b) => b.avg - a.avg);
 
-  ensureChart('chart-cu-bar', {
-    type: 'bar',
-    data: {
-      labels: avgByCu.map(e => e.k),
-      datasets: [{ data: avgByCu.map(e => e.avg), backgroundColor: avgByCu.map(e => CU_COLORS[e.k] || PALETTE.muted), borderRadius: 2, maxBarThickness: 20 }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { right: 44 } },
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { font: baseFont, color: PALETTE.muted, callback: v => v + '%' }, grid: baseGrid, suggestedMax: (Math.max(...avgByCu.map(e => e.avg), 1)) * 1.25 },
-        y: { ticks: { font: baseFont, color: PALETTE.muted }, grid: { display: false } }
-      }
-    }
-  });
-  document.getElementById('chart-cu-bar').closest('.chart-wrap').style.height = Math.max(220, avgByCu.length * 24) + 'px';
-
   // ---- programas filtrados con estadísticas recalculadas al alcance de filtros ----
   const progs = scope.programs.filter(programMatches).map(p => ({ ...p, ...scopedStats(p, periodMatches) }));
   const withData = progs.filter(p => p.avg !== null);
-
-  const globalAvg = withData.length ? withData.reduce((a, b) => a + b.avg, 0) / withData.length : 0;
-  document.getElementById('kpi-tasa').textContent = withData.length ? globalAvg.toFixed(2) + '%' : '—';
 
   let totalCasos = 0;
   progs.forEach(p => Object.entries(p.periods).forEach(([per, v]) => {
@@ -283,13 +260,37 @@ function render() {
   const criticos = withData.filter(p => p.avg > 12 && p.slope > 0.3);
   document.getElementById('kpi-criticos').textContent = criticos.length;
 
-  renderAlerts(withData);
+  // Programa con mayor / menor tasa (sólo con al menos 4 semestres activos para evitar outliers de baja población)
+  const eligibleExtremes = withData.filter(p => p.activeSems >= 4);
+  const maxProg = eligibleExtremes.length ? eligibleExtremes.reduce((a, b) => b.avg > a.avg ? b : a) : null;
+  const minProg = eligibleExtremes.length ? eligibleExtremes.reduce((a, b) => b.avg < a.avg ? b : a) : null;
+  document.getElementById('kpi-prog-max').textContent = maxProg ? `${maxProg.cu} — ${maxProg.programa} (${maxProg.avg.toFixed(2)}%)` : '—';
+  document.getElementById('kpi-prog-min').textContent = minProg ? `${minProg.cu} — ${minProg.programa} (${minProg.avg.toFixed(2)}%)` : '—';
+
+  renderAlerts(withData, periods);
   renderTable(progs, periods);
 }
 
-function renderAlerts(withData) {
+// Disminución continua y estricta en los últimos 4 periodos disponibles (dentro del alcance de filtros actual)
+function hasContinuousImprovement(p, periodsList) {
+  const last4 = periodsList.slice(-4);
+  if (last4.length < 4) return false;
+  const vals = last4.map(per => (p.periods[per] ? p.periods[per].pct : null));
+  if (vals.some(v => v === null || v === undefined)) return false;
+  for (let i = 0; i < vals.length - 1; i++) {
+    if (!(vals[i] > vals[i + 1])) return false;
+  }
+  return true;
+}
+
+function renderAlerts(withData, periodsList) {
   const crit = [...withData].filter(p => p.avg > 12 && p.slope > 0.3).sort((a, b) => b.avg - a.avg).slice(0, 6);
-  const improving = [...withData].filter(p => p.activeSems >= 3 && p.slope < -0.3).sort((a, b) => a.slope - b.slope).slice(0, 6);
+  const improving = [...withData].filter(p => hasContinuousImprovement(p, periodsList))
+    .sort((a, b) => {
+      const aVals = periodsList.slice(-4).map(per => a.periods[per].pct);
+      const bVals = periodsList.slice(-4).map(per => b.periods[per].pct);
+      return (bVals[0] - bVals[3]) - (aVals[0] - aVals[3]);
+    });
 
   const critEl = document.getElementById('critical-alerts');
   critEl.innerHTML = crit.length ? crit.map(p => `

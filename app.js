@@ -12,7 +12,6 @@ const CU_COLORS = {
   'Garzón': '#C1432B', 'Pitalito': '#8A5FBF', 'Lérida': '#5294E2',
   'La Dorada': '#E84393', 'Planadas': '#6C757D'
 };
-const RECENT_N = 8;
 
 let DATA = null;
 let metric = 'ausentismo'; // 'ausentismo' | 'desercion'
@@ -210,33 +209,40 @@ function render() {
   document.getElementById('content-body').style.display = 'block';
   document.getElementById('empty-state').style.display = 'none';
 
-  // Evolución: sin CU seleccionado se muestra el histórico de todos los CU por separado
-  // (el agregado "Sede Tolima-Huila" ya está disponible en el tablero de nivel CU)
-  const evoKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
-  const evoDatasets = evoKeys.map(k => ({
-    label: k,
-    data: idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null),
-    borderColor: CU_COLORS[k] || PALETTE.muted,
-    backgroundColor: 'transparent',
-    pointBackgroundColor: CU_COLORS[k] || PALETTE.muted,
-    borderWidth: k === 'Sede Tolima-Huila' ? 3 : 2,
-    pointRadius: 3, tension: 0.3, spanGaps: true
-  }));
-  ensureChart('chart-evolucion', {
-    type: 'line',
-    data: { labels: periods, datasets: evoDatasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 46 } },
-      plugins: { legend: { labels: { font: baseFont, color: PALETTE.ink, boxWidth: 10 } } },
-      scales: {
-        x: { ticks: { font: baseFont, color: PALETTE.muted, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
-        y: { ticks: { font: baseFont, color: PALETTE.muted, callback: v => v + '%' }, grid: baseGrid, min: 0 }
+  // La gráfica sólo se construye cuando el usuario ha seleccionado algún filtro (Año, Semestre o CU)
+  const hasFilter = state.anio.size > 0 || state.semestre.size > 0 || state.cu.size > 0;
+  const chartPanel = document.getElementById('chart-panel');
+  if (hasFilter) {
+    chartPanel.style.display = 'block';
+    const evoKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
+    const evoDatasets = evoKeys.map(k => ({
+      label: k,
+      data: idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null),
+      borderColor: CU_COLORS[k] || PALETTE.muted,
+      backgroundColor: 'transparent',
+      pointBackgroundColor: CU_COLORS[k] || PALETTE.muted,
+      borderWidth: k === 'Sede Tolima-Huila' ? 3 : 2,
+      pointRadius: 3, tension: 0.3, spanGaps: true
+    }));
+    ensureChart('chart-evolucion', {
+      type: 'line',
+      data: { labels: periods, datasets: evoDatasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 46 } },
+        plugins: { legend: { labels: { font: baseFont, color: PALETTE.ink, boxWidth: 10 } } },
+        scales: {
+          x: { ticks: { font: baseFont, color: PALETTE.muted, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
+          y: { ticks: { font: baseFont, color: PALETTE.muted, callback: v => v + '%' }, grid: baseGrid, min: 0 }
+        }
       }
-    }
-  });
+    });
+  } else {
+    chartPanel.style.display = 'none';
+    if (charts['chart-evolucion']) { charts['chart-evolucion'].destroy(); delete charts['chart-evolucion']; }
+  }
 
-  // Promedio por CU (sin gráfica; se usa para el KPI "CU con mayor tasa")
+  // Promedio por CU (sólo se usa para el KPI "CU con mayor tasa")
   const barKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
   const avgByCu = barKeys.map(k => {
     const vals = idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null).filter(v => v !== null && v !== undefined);
@@ -267,15 +273,18 @@ function render() {
   document.getElementById('kpi-prog-max').textContent = maxProg ? `${maxProg.cu} — ${maxProg.programa} (${maxProg.avg.toFixed(2)}%)` : '—';
   document.getElementById('kpi-prog-min').textContent = minProg ? `${minProg.cu} — ${minProg.programa} (${minProg.avg.toFixed(2)}%)` : '—';
 
+  const mejorando = withData.filter(p => hasContinuousImprovement(p, periods));
+  document.getElementById('kpi-mejorando').textContent = mejorando.length;
+
   renderAlerts(withData, periods);
-  renderTable(progs, periods);
+  renderTable(progs, periods, hasFilter);
 }
 
-// Disminución continua y estricta en los últimos 4 periodos disponibles (dentro del alcance de filtros actual)
+// Disminución continua y estricta en los últimos 3 periodos disponibles (dentro del alcance de filtros actual)
 function hasContinuousImprovement(p, periodsList) {
-  const last4 = periodsList.slice(-4);
-  if (last4.length < 4) return false;
-  const vals = last4.map(per => (p.periods[per] ? p.periods[per].pct : null));
+  const last3 = periodsList.slice(-3);
+  if (last3.length < 3) return false;
+  const vals = last3.map(per => (p.periods[per] ? p.periods[per].pct : null));
   if (vals.some(v => v === null || v === undefined)) return false;
   for (let i = 0; i < vals.length - 1; i++) {
     if (!(vals[i] > vals[i + 1])) return false;
@@ -287,9 +296,9 @@ function renderAlerts(withData, periodsList) {
   const crit = [...withData].filter(p => p.avg > 12 && p.slope > 0.3).sort((a, b) => b.avg - a.avg).slice(0, 6);
   const improving = [...withData].filter(p => hasContinuousImprovement(p, periodsList))
     .sort((a, b) => {
-      const aVals = periodsList.slice(-4).map(per => a.periods[per].pct);
-      const bVals = periodsList.slice(-4).map(per => b.periods[per].pct);
-      return (bVals[0] - bVals[3]) - (aVals[0] - aVals[3]);
+      const aVals = periodsList.slice(-3).map(per => a.periods[per].pct);
+      const bVals = periodsList.slice(-3).map(per => b.periods[per].pct);
+      return (bVals[0] - bVals[2]) - (aVals[0] - aVals[2]);
     });
 
   const critEl = document.getElementById('critical-alerts');
@@ -322,9 +331,10 @@ function pctClass(v) {
   return 'pct-low';
 }
 
-function renderTable(progs, activePeriods) {
-  // si no hay filtro de año/semestre activo, mostramos los últimos 8 periodos para no saturar la tabla
-  const periodsShown = (state.anio.size || state.semestre.size) ? activePeriods : activePeriods.slice(-RECENT_N);
+function renderTable(progs, activePeriods, hasFilter) {
+  // Sin ningún filtro (Año, Semestre o CU) seleccionado: sólo el último registro (periodo más reciente).
+  // Con algún filtro seleccionado: se muestran todos los periodos que correspondan a esa selección.
+  const periodsShown = hasFilter ? activePeriods : activePeriods.slice(-1);
 
   const headerRow = document.getElementById('header-row');
   const sortIcon = key => sortKey === key ? (sortDir === 1 ? '▲' : '▼') : '↕';

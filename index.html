@@ -42,9 +42,13 @@
         <div class="label">CU con mayor tasa</div>
         <div class="num" id="kpi-cu" style="font-size:17px">—</div>
       </div>
-      <div class="kpi kpi-teal">
+      <div class="kpi kpi-danger">
         <div class="label">Programas críticos</div>
         <div class="num" id="kpi-criticos">—</div>
+      </div>
+      <div class="kpi kpi-teal">
+        <div class="label">Programas en mejora</div>
+        <div class="num" id="kpi-mejorando">—</div>
       </div>
       <div class="kpi kpi-danger">
         <div class="label">Programa con mayor tasa</div>
@@ -61,16 +65,16 @@
     </div>
 
     <div id="content-body">
-      <div class="panel panel-full">
+      <div class="panel panel-full" id="chart-panel" style="display:none">
         <h3>Evolución histórica por Centro Universitario</h3>
-        <div class="panel-sub">Calculada agregando todos los programas de cada CU</div>
+        <div class="panel-sub">Según los filtros seleccionados (Año, Semestre y/o Centro Universitario)</div>
         <div class="chart-wrap"><canvas id="chart-evolucion"></canvas></div>
       </div>
 
       <div class="section-title">🚨 Programas críticos <span class="pill">Tasa alta + tendencia creciente</span></div>
       <div class="alerts" id="critical-alerts"></div>
 
-      <div class="section-title">✅ Programas en mejora <span class="pill">Tendencia decreciente sostenida</span></div>
+      <div class="section-title">✅ Programas en mejora <span class="pill">Disminución en los últimos 3 periodos</span></div>
       <div class="alerts" id="improving-alerts"></div>
 
       <div class="table-panel">

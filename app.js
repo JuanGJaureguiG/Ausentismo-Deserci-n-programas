@@ -366,7 +366,6 @@ function renderTable(progs, activePeriods, hasFilter) {
   headerRow.innerHTML = `
     <th onclick="sortTable('cu')">CU <span class="sort-icon">${sortIcon('cu')}</span></th>
     <th onclick="sortTable('programa')">Programa <span class="sort-icon">${sortIcon('programa')}</span></th>
-    <th onclick="sortTable('avg_pct')">% Promedio <span class="sort-icon">${sortIcon('avg_pct')}</span></th>
     <th>Tendencia</th>
     ${periodsShown.map(p => `<th>${p}</th>`).join('')}
     <th onclick="sortTable('activeSems')">Sems. Activos <span class="sort-icon">${sortIcon('activeSems')}</span></th>
@@ -391,7 +390,6 @@ function renderTable(progs, activePeriods, hasFilter) {
     return `<tr>
       <td><span class="cu-badge">${p.cu}</span></td>
       <td style="max-width:260px;white-space:normal">${p.programa}</td>
-      <td class="pct-cell ${pctClass(p.avg)}">${p.avg !== null ? p.avg.toFixed(2) + '%' : '—'}</td>
       <td>${trend}</td>
       ${cells}
       <td style="color:var(--muted);text-align:center">${p.activeSems}</td>

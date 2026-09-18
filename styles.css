@@ -40,6 +40,8 @@ h1,h2,h3,.num{font-family:'Space Grotesk',system-ui,sans-serif;}
 
 .search-box{width:100%;padding:7px 9px;margin-top:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);border-radius:3px;color:#fff;font-size:12.5px;font-family:inherit;}
 .search-box::placeholder{color:#7E93A6;}
+select.search-box{cursor:pointer;}
+select.search-box option{color:var(--ink);background:#fff;padding:6px 8px;}
 
 .clear-all{margin-top:22px;width:100%;background:transparent;border:1px solid rgba(255,255,255,0.3);color:#DCE6EE;padding:9px;border-radius:3px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;}
 .clear-all:hover{border-color:var(--accent);color:var(--accent);}

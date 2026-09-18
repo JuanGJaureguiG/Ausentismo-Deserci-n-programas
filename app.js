@@ -341,7 +341,7 @@ function render() {
   document.getElementById('kpi-criticos').textContent = criticos.length;
 
   // Top N programas con mayor y menor tasa, según el alcance de filtros actual
-  renderTopPrograms(withData);
+  renderTopPrograms(withData, periods);
 
   const mejorando = withData.filter(p => hasContinuousImprovement(p, periods));
   document.getElementById('kpi-mejorando').textContent = mejorando.length;
@@ -382,7 +382,6 @@ function renderAlerts(withData, periodsList) {
       <div class="alert-cu">${p.cu}</div>
       <div class="alert-prog">${p.programa}</div>
       <div class="alert-stats">
-        <div><div class="alert-stat-val" style="color:var(--danger)">${p.avg.toFixed(2)}%</div><div class="alert-stat-label">Prom. ${metric === 'ausentismo' ? 'ausentismo' : 'deserción'}</div></div>
         <div><div class="alert-stat-val" style="color:var(--accent)">↑ Creciente</div><div class="alert-stat-label">Tendencia</div></div>
       </div>
     </div>`).join('') : '<div class="empty-alert">No hay programas críticos con los filtros actuales.</div>';
@@ -393,34 +392,46 @@ function renderAlerts(withData, periodsList) {
       <div class="alert-cu">${p.cu}</div>
       <div class="alert-prog">${p.programa}</div>
       <div class="alert-stats">
-        <div><div class="alert-stat-val" style="color:var(--teal)">${p.avg.toFixed(2)}%</div><div class="alert-stat-label">Prom. ${metric === 'ausentismo' ? 'ausentismo' : 'deserción'}</div></div>
         <div><div class="alert-stat-val" style="color:var(--teal)">↓ Mejorando</div><div class="alert-stat-label">Tendencia</div></div>
       </div>
     </div>`).join('') : '<div class="empty-alert">No hay programas en mejora sostenida con los filtros actuales.</div>';
 }
 
-function renderTopPrograms(withData) {
+function renderTopPrograms(withData, periodsList) {
   const maxEl = document.getElementById('top-max-list');
   const minEl = document.getElementById('top-min-list');
 
-  if (!withData.length) {
+  // Registros EXACTOS: un dato por cada combinación programa + periodo con información real
+  // (no promedios) — así "mayor/menor tasa" refleja el valor puntual real de la base de datos.
+  const records = [];
+  withData.forEach(p => {
+    periodsList.forEach(per => {
+      const v = p.periods[per];
+      if (v && v.pct !== null && v.pct !== undefined) {
+        records.push({ cu: p.cu, programa: p.programa, period: per, pct: v.pct, cnt: v.cnt });
+      }
+    });
+  });
+
+  if (!records.length) {
     maxEl.innerHTML = '<div class="empty-alert">Sin datos con los filtros actuales.</div>';
     minEl.innerHTML = '<div class="empty-alert">Sin datos con los filtros actuales.</div>';
     return;
   }
 
-  const topMax = [...withData].sort((a, b) => b.avg - a.avg).slice(0, topN);
-  const topMin = [...withData].sort((a, b) => a.avg - b.avg).slice(0, topN);
+  const wordCnt = metric === 'ausentismo' ? 'ausentes' : 'desertores';
+  const topMax = [...records].sort((a, b) => b.pct - a.pct).slice(0, topN);
+  const topMin = [...records].sort((a, b) => a.pct - b.pct).slice(0, topN);
 
-  const rowHTML = (p, i, color) => `
+  const rowHTML = (r, i, color) => `
     <div class="rank-item">
       <span class="rank-num">${i + 1}</span>
-      <span class="rank-prog"><span class="rank-cu">${p.cu}</span>${p.programa}</span>
-      <span class="rank-val" style="color:${color}">${p.avg.toFixed(2)}%</span>
+      <span class="rank-prog"><span class="rank-cu">${r.cu} · ${r.period}</span>${r.programa}</span>
+      <span class="rank-val" style="color:${color}">${r.pct.toFixed(2)}%${r.cnt !== null && r.cnt !== undefined ? `<span class="cnt-sub">${r.cnt} ${wordCnt}</span>` : ''}</span>
     </div>`;
 
-  maxEl.innerHTML = topMax.map((p, i) => rowHTML(p, i, 'var(--danger)')).join('');
-  minEl.innerHTML = topMin.map((p, i) => rowHTML(p, i, 'var(--teal)')).join('');
+  maxEl.innerHTML = topMax.map((r, i) => rowHTML(r, i, 'var(--danger)')).join('');
+  minEl.innerHTML = topMin.map((r, i) => rowHTML(r, i, 'var(--teal)')).join('');
 }
 
 function pctClass(v) {

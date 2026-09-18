@@ -295,7 +295,7 @@ function render() {
   document.getElementById('kpi-cu').textContent = mejorCu ? `${mejorCu.k} (${mejorCu.max.toFixed(2)}%)` : '—';
   document.getElementById('kpi-cu-min').textContent = peorCu ? `${peorCu.k} (${peorCu.min.toFixed(2)}%)` : '—';
 
-  const criticos = withData.filter(p => p.avg > 12 && p.slope > 0.3);
+  const criticos = withData.filter(p => p.avg > 12 && hasContinuousWorsening(p, periods));
   document.getElementById('kpi-criticos').textContent = criticos.length;
 
   // Top N programas con mayor y menor tasa, según el alcance de filtros actual
@@ -309,20 +309,24 @@ function render() {
   renderTable(progs, periods, hasTableFilter);
 }
 
-// Disminución continua y estricta en los últimos 3 periodos disponibles (dentro del alcance de filtros actual)
-function hasContinuousImprovement(p, periodsList) {
+// Tendencia estricta y continua en los últimos 3 periodos disponibles (dentro del alcance de filtros actual)
+// direction 'down' = disminución continua (mejora) · 'up' = aumento continuo (empeora)
+function hasContinuousTrend(p, periodsList, direction) {
   const last3 = periodsList.slice(-3);
   if (last3.length < 3) return false;
   const vals = last3.map(per => (p.periods[per] ? p.periods[per].pct : null));
   if (vals.some(v => v === null || v === undefined)) return false;
   for (let i = 0; i < vals.length - 1; i++) {
-    if (!(vals[i] > vals[i + 1])) return false;
+    if (direction === 'up') { if (!(vals[i] < vals[i + 1])) return false; }
+    else { if (!(vals[i] > vals[i + 1])) return false; }
   }
   return true;
 }
+function hasContinuousImprovement(p, periodsList) { return hasContinuousTrend(p, periodsList, 'down'); }
+function hasContinuousWorsening(p, periodsList) { return hasContinuousTrend(p, periodsList, 'up'); }
 
 function renderAlerts(withData, periodsList) {
-  const crit = [...withData].filter(p => p.avg > 12 && p.slope > 0.3).sort((a, b) => b.avg - a.avg).slice(0, 6);
+  const crit = [...withData].filter(p => p.avg > 12 && hasContinuousWorsening(p, periodsList)).sort((a, b) => b.avg - a.avg).slice(0, 6);
   const improving = [...withData].filter(p => hasContinuousImprovement(p, periodsList))
     .sort((a, b) => {
       const aVals = periodsList.slice(-3).map(per => a.periods[per].pct);

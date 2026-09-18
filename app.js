@@ -17,6 +17,7 @@ let DATA = null;
 let metric = 'ausentismo'; // 'ausentismo' | 'desercion'
 let state = { cu: new Set(), anio: new Set(), semestre: new Set() };
 let progSelected = '';
+let topN = 5;
 let sortKey = 'avg_pct', sortDir = -1;
 let charts = {};
 
@@ -26,6 +27,7 @@ async function boot() {
   buildSidebar();
   document.getElementById('tab-ausentismo').addEventListener('click', () => setMetric('ausentismo'));
   document.getElementById('tab-desercion').addEventListener('click', () => setMetric('desercion'));
+  document.getElementById('topn-select').addEventListener('change', (e) => { topN = parseInt(e.target.value, 10); render(); });
   render();
 }
 
@@ -290,12 +292,8 @@ function render() {
   const criticos = withData.filter(p => p.avg > 12 && p.slope > 0.3);
   document.getElementById('kpi-criticos').textContent = criticos.length;
 
-  // Programa con mayor / menor tasa (sólo con al menos 4 semestres activos para evitar outliers de baja población)
-  const eligibleExtremes = withData.filter(p => p.activeSems >= 4);
-  const maxProg = eligibleExtremes.length ? eligibleExtremes.reduce((a, b) => b.avg > a.avg ? b : a) : null;
-  const minProg = eligibleExtremes.length ? eligibleExtremes.reduce((a, b) => b.avg < a.avg ? b : a) : null;
-  document.getElementById('kpi-prog-max').textContent = maxProg ? `${maxProg.cu} — ${maxProg.programa} (${maxProg.avg.toFixed(2)}%)` : '—';
-  document.getElementById('kpi-prog-min').textContent = minProg ? `${minProg.cu} — ${minProg.programa} (${minProg.avg.toFixed(2)}%)` : '—';
+  // Top N programas con mayor y menor tasa, según el alcance de filtros actual
+  renderTopPrograms(withData);
 
   const mejorando = withData.filter(p => hasContinuousImprovement(p, periods));
   document.getElementById('kpi-mejorando').textContent = mejorando.length;
@@ -347,6 +345,30 @@ function renderAlerts(withData, periodsList) {
         <div><div class="alert-stat-val" style="color:var(--teal)">↓ Mejorando</div><div class="alert-stat-label">Tendencia</div></div>
       </div>
     </div>`).join('') : '<div class="empty-alert">No hay programas en mejora sostenida con los filtros actuales.</div>';
+}
+
+function renderTopPrograms(withData) {
+  const maxEl = document.getElementById('top-max-list');
+  const minEl = document.getElementById('top-min-list');
+
+  if (!withData.length) {
+    maxEl.innerHTML = '<div class="empty-alert">Sin datos con los filtros actuales.</div>';
+    minEl.innerHTML = '<div class="empty-alert">Sin datos con los filtros actuales.</div>';
+    return;
+  }
+
+  const topMax = [...withData].sort((a, b) => b.avg - a.avg).slice(0, topN);
+  const topMin = [...withData].sort((a, b) => a.avg - b.avg).slice(0, topN);
+
+  const rowHTML = (p, i, color) => `
+    <div class="rank-item">
+      <span class="rank-num">${i + 1}</span>
+      <span class="rank-prog"><span class="rank-cu">${p.cu}</span>${p.programa}</span>
+      <span class="rank-val" style="color:${color}">${p.avg.toFixed(2)}%</span>
+    </div>`;
+
+  maxEl.innerHTML = topMax.map((p, i) => rowHTML(p, i, 'var(--danger)')).join('');
+  minEl.innerHTML = topMin.map((p, i) => rowHTML(p, i, 'var(--teal)')).join('');
 }
 
 function pctClass(v) {

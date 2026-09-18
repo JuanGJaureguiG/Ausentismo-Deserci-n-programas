@@ -50,14 +50,6 @@
         <div class="label">Programas en mejora</div>
         <div class="num" id="kpi-mejorando">—</div>
       </div>
-      <div class="kpi kpi-danger">
-        <div class="label">Programa con mayor tasa</div>
-        <div class="num" id="kpi-prog-max" style="font-size:14px;line-height:1.35">—</div>
-      </div>
-      <div class="kpi kpi-teal">
-        <div class="label">Programa con menor tasa</div>
-        <div class="num" id="kpi-prog-min" style="font-size:14px;line-height:1.35">—</div>
-      </div>
     </div>
 
     <div class="empty-state" id="empty-state" style="display:none">
@@ -76,6 +68,29 @@
 
       <div class="section-title">✅ Programas en mejora <span class="pill">Disminución en los últimos 3 periodos</span></div>
       <div class="alerts" id="improving-alerts"></div>
+
+      <div class="section-title">
+        🏅 Top programas por tasa
+        <span class="pill">Según filtros seleccionados</span>
+        <select id="topn-select" class="topn-select">
+          <option value="3">Top 3</option>
+          <option value="5" selected>Top 5</option>
+          <option value="10">Top 10</option>
+          <option value="15">Top 15</option>
+        </select>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h3>📈 Mayor tasa</h3>
+          <div class="panel-sub">Programas con la tasa promedio más alta en el alcance filtrado</div>
+          <div id="top-max-list"></div>
+        </div>
+        <div class="panel">
+          <h3>📉 Menor tasa</h3>
+          <div class="panel-sub">Programas con la tasa promedio más baja en el alcance filtrado</div>
+          <div id="top-min-list"></div>
+        </div>
+      </div>
 
       <div class="table-panel">
         <h3 style="margin-bottom:14px">Detalle por programa</h3>

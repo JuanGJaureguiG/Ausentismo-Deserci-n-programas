@@ -16,7 +16,7 @@ const CU_COLORS = {
 let DATA = null;
 let metric = 'ausentismo'; // 'ausentismo' | 'desercion'
 let state = { cu: new Set(), anio: new Set(), semestre: new Set() };
-let progSearch = '';
+let progSelected = '';
 let sortKey = 'avg_pct', sortDir = -1;
 let charts = {};
 
@@ -90,18 +90,27 @@ function buildSidebar() {
   sidebar.appendChild(makeGroup('Centro Universitario', chipGroup(cus, state.cu), true));
 
   const progWrap = document.createElement('div');
-  const search = document.createElement('input');
-  search.type = 'text';
-  search.placeholder = 'Buscar programa…';
-  search.className = 'search-box';
-  search.addEventListener('input', () => { progSearch = search.value.toLowerCase(); render(); });
-  progWrap.appendChild(search);
-  sidebar.appendChild(makeGroup('Programa', progWrap));
+  const progSelect = document.createElement('select');
+  progSelect.className = 'search-box';
+  const allProgramas = [...new Set(DATA.ausentismo.programs.map(p => p.programa).concat(DATA.desercion.programs.map(p => p.programa)))].sort();
+  const blankOpt = document.createElement('option');
+  blankOpt.value = '';
+  blankOpt.textContent = 'Todos los programas';
+  progSelect.appendChild(blankOpt);
+  allProgramas.forEach(nombre => {
+    const opt = document.createElement('option');
+    opt.value = nombre;
+    opt.textContent = nombre;
+    progSelect.appendChild(opt);
+  });
+  progSelect.addEventListener('change', () => { progSelected = progSelect.value; render(); });
+  progWrap.appendChild(progSelect);
+  sidebar.appendChild(makeGroup('Programa', progWrap, true));
 
   document.getElementById('clear-all').addEventListener('click', () => {
-    state.cu.clear(); state.anio.clear(); state.semestre.clear(); progSearch = '';
+    state.cu.clear(); state.anio.clear(); state.semestre.clear(); progSelected = '';
     document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.search-box').forEach(s => s.value = '');
+    document.querySelectorAll('.search-box').forEach(s => { s.value = ''; });
     render();
   });
 }
@@ -117,7 +126,7 @@ function periodMatches(p) {
 
 function programMatches(p) {
   if (state.cu.size && !state.cu.has(p.cu)) return false;
-  if (progSearch && !p.programa.toLowerCase().includes(progSearch)) return false;
+  if (progSelected && p.programa !== progSelected) return false;
   return true;
 }
 
@@ -209,21 +218,34 @@ function render() {
   document.getElementById('content-body').style.display = 'block';
   document.getElementById('empty-state').style.display = 'none';
 
-  // La gráfica sólo se construye cuando el usuario ha seleccionado algún filtro (Año, Semestre o CU)
-  const hasFilter = state.anio.size > 0 || state.semestre.size > 0 || state.cu.size > 0;
+  // La gráfica sólo se construye cuando el usuario ha seleccionado Programa + Centro Universitario + Año
+  const hasChartFilter = progSelected !== '' && state.cu.size > 0 && state.anio.size > 0;
   const chartPanel = document.getElementById('chart-panel');
-  if (hasFilter) {
-    chartPanel.style.display = 'block';
-    const evoKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
-    const evoDatasets = evoKeys.map(k => ({
-      label: k,
-      data: idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null),
-      borderColor: CU_COLORS[k] || PALETTE.muted,
+  const chartTitleEl = document.getElementById('chart-title');
+  const chartSubtitleEl = document.getElementById('chart-subtitle');
+
+  if (hasChartFilter) {
+    const cuList = [...state.cu];
+    const matchedPairs = cuList
+      .map(cu => ({ cu, prog: scope.programs.find(p => p.cu === cu && p.programa === progSelected) }))
+      .filter(pair => pair.prog);
+
+    chartTitleEl.textContent = `Evolución histórica de ${progSelected} — ${cuList.join(' / ')}`;
+    chartSubtitleEl.textContent = matchedPairs.length
+      ? `Periodos ${periods[0]} a ${periods[periods.length - 1]}`
+      : 'No hay datos registrados para este programa en el/los centro(s) seleccionados.';
+
+    const evoDatasets = matchedPairs.map(({ cu, prog }) => ({
+      label: cu,
+      data: periods.map(per => (prog.periods[per] ? prog.periods[per].pct : null)),
+      borderColor: CU_COLORS[cu] || PALETTE.muted,
       backgroundColor: 'transparent',
-      pointBackgroundColor: CU_COLORS[k] || PALETTE.muted,
-      borderWidth: k === 'Sede Tolima-Huila' ? 3 : 2,
+      pointBackgroundColor: CU_COLORS[cu] || PALETTE.muted,
+      borderWidth: 2,
       pointRadius: 3, tension: 0.3, spanGaps: true
     }));
+
+    chartPanel.style.display = 'block';
     ensureChart('chart-evolucion', {
       type: 'line',
       data: { labels: periods, datasets: evoDatasets },
@@ -239,6 +261,8 @@ function render() {
     });
   } else {
     chartPanel.style.display = 'none';
+    chartTitleEl.textContent = 'Evolución histórica';
+    chartSubtitleEl.textContent = 'Selecciona programa, centro universitario y año para verla';
     if (charts['chart-evolucion']) { charts['chart-evolucion'].destroy(); delete charts['chart-evolucion']; }
   }
 
@@ -277,7 +301,8 @@ function render() {
   document.getElementById('kpi-mejorando').textContent = mejorando.length;
 
   renderAlerts(withData, periods);
-  renderTable(progs, periods, hasFilter);
+  const hasTableFilter = state.anio.size > 0 || state.semestre.size > 0 || state.cu.size > 0 || progSelected !== '';
+  renderTable(progs, periods, hasTableFilter);
 }
 
 // Disminución continua y estricta en los últimos 3 periodos disponibles (dentro del alcance de filtros actual)

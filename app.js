@@ -206,8 +206,6 @@ function ensureChart(id, config) {
 function render() {
   const scope = DATA[metric];
   const periods = scope.periods.filter(periodMatches);
-  const cuSeries = scope.cu_series;
-  const idxList = periods.map(p => scope.periods.indexOf(p));
 
   document.getElementById('metric-title').textContent = metric === 'ausentismo' ? 'Ausentismo' : 'Deserción';
   document.getElementById('metric-word').textContent = metric === 'ausentismo' ? 'ausentes' : 'desertores';
@@ -268,14 +266,6 @@ function render() {
     if (charts['chart-evolucion']) { charts['chart-evolucion'].destroy(); delete charts['chart-evolucion']; }
   }
 
-  // Promedio por CU (sólo se usa para el KPI "CU con mayor tasa")
-  const barKeys = state.cu.size ? [...state.cu] : Object.keys(cuSeries).filter(k => k !== 'Sede Tolima-Huila');
-  const avgByCu = barKeys.map(k => {
-    const vals = idxList.map(i => cuSeries[k] ? cuSeries[k][i] : null).filter(v => v !== null && v !== undefined);
-    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-    return { k, avg };
-  }).sort((a, b) => b.avg - a.avg);
-
   // ---- programas filtrados con estadísticas recalculadas al alcance de filtros ----
   const progs = scope.programs.filter(programMatches).map(p => ({ ...p, ...scopedStats(p, periodMatches) }));
   const withData = progs.filter(p => p.avg !== null);
@@ -286,8 +276,19 @@ function render() {
   }));
   document.getElementById('kpi-casos').textContent = totalCasos.toLocaleString('es-CO');
 
-  const peorCu = avgByCu[0];
-  document.getElementById('kpi-cu').textContent = peorCu ? `${peorCu.k} (${peorCu.avg.toFixed(2)}%)` : '—';
+  // Promedio por CU dentro del MISMO alcance filtrado que el resto del tablero
+  // (respeta Año, Semestre, CU y también el Programa seleccionado, igual que la gráfica)
+  const cuScope = [...new Set(withData.map(p => p.cu))];
+  const avgByCu = cuScope.map(cu => {
+    const vals = withData.filter(p => p.cu === cu).map(p => p.avg);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return { k: cu, avg };
+  }).sort((a, b) => b.avg - a.avg);
+
+  const mejorCu = avgByCu[0];
+  const peorCu = avgByCu[avgByCu.length - 1];
+  document.getElementById('kpi-cu').textContent = mejorCu ? `${mejorCu.k} (${mejorCu.avg.toFixed(2)}%)` : '—';
+  document.getElementById('kpi-cu-min').textContent = peorCu ? `${peorCu.k} (${peorCu.avg.toFixed(2)}%)` : '—';
 
   const criticos = withData.filter(p => p.avg > 12 && p.slope > 0.3);
   document.getElementById('kpi-criticos').textContent = criticos.length;

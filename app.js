@@ -179,16 +179,18 @@ const dataLabelsPlugin = {
         ctx.fillStyle = type === 'line' ? (dataset.borderColor || PALETTE.ink) : PALETTE.ink;
         ctx.textBaseline = 'middle';
         const pos = el.tooltipPosition();
+        const cnt = dataset.counts ? dataset.counts[i] : null;
+        const labelText = value.toFixed(2) + '%' + (cnt !== null && cnt !== undefined ? ` (${cnt})` : '');
         if (type === 'line') {
           ctx.textAlign = 'center';
           const yOffset = stagger ? [10, 24, 38][i % 3] : 10;
-          ctx.fillText(value.toFixed(2) + '%', pos.x, pos.y - yOffset);
+          ctx.fillText(labelText, pos.x, pos.y - yOffset);
         } else if (horizontal) {
           ctx.textAlign = 'left';
-          ctx.fillText(value.toFixed(2) + '%', pos.x + 6, pos.y);
+          ctx.fillText(labelText, pos.x + 6, pos.y);
         } else {
           ctx.textAlign = 'center';
-          ctx.fillText(value.toFixed(2) + '%', pos.x, pos.y - 10);
+          ctx.fillText(labelText, pos.x, pos.y - 10);
         }
         ctx.restore();
       });
@@ -235,9 +237,11 @@ function render() {
       ? `Periodos ${periods[0]} a ${periods[periods.length - 1]}`
       : 'No hay datos registrados para este programa en el/los centro(s) seleccionados.';
 
+    const wordCnt = metric === 'ausentismo' ? 'ausentes' : 'desertores';
     const evoDatasets = matchedPairs.map(({ cu, prog }) => ({
       label: cu,
       data: periods.map(per => (prog.periods[per] ? prog.periods[per].pct : null)),
+      counts: periods.map(per => (prog.periods[per] ? prog.periods[per].cnt : null)),
       borderColor: CU_COLORS[cu] || PALETTE.muted,
       backgroundColor: 'transparent',
       pointBackgroundColor: CU_COLORS[cu] || PALETTE.muted,
@@ -252,7 +256,19 @@ function render() {
       options: {
         responsive: true, maintainAspectRatio: false,
         layout: { padding: { top: 46 } },
-        plugins: { legend: { labels: { font: baseFont, color: PALETTE.ink, boxWidth: 10 } } },
+        plugins: {
+          legend: { labels: { font: baseFont, color: PALETTE.ink, boxWidth: 10 } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const val = ctx.parsed.y;
+                const cnt = ctx.dataset.counts ? ctx.dataset.counts[ctx.dataIndex] : null;
+                const pctTxt = val !== null && val !== undefined ? val.toFixed(2) + '%' : '—';
+                return `${ctx.dataset.label}: ${pctTxt}${cnt !== null && cnt !== undefined ? ` (${cnt} ${wordCnt})` : ''}`;
+              }
+            }
+          }
+        },
         scales: {
           x: { ticks: { font: baseFont, color: PALETTE.muted, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
           y: { ticks: { font: baseFont, color: PALETTE.muted, callback: v => v + '%' }, grid: baseGrid, min: 0 }
@@ -415,9 +431,12 @@ function renderTable(progs, activePeriods, hasFilter) {
     const trend = p.slope > 0.3 ? '<span class="trend-up">↑ Creciente</span>' :
                   p.slope < -0.3 ? '<span class="trend-down">↓ Decreciente</span>' :
                   '<span class="trend-flat">→ Estable</span>';
+    const wordCnt = metric === 'ausentismo' ? 'ausentes' : 'desertores';
     const cells = periodsShown.map(per => {
       const v = p.periods[per];
-      return `<td class="pct-cell ${pctClass(v ? v.pct : null)}">${v && v.pct !== null ? v.pct.toFixed(2) + '%' : '—'}</td>`;
+      const pctTxt = v && v.pct !== null ? v.pct.toFixed(2) + '%' : '—';
+      const cntTxt = v && v.cnt !== null && v.cnt !== undefined ? `<span class="cnt-sub">${v.cnt} ${wordCnt}</span>` : '';
+      return `<td class="pct-cell ${pctClass(v ? v.pct : null)}">${pctTxt}${cntTxt}</td>`;
     }).join('');
     return `<tr>
       <td><span class="cu-badge">${p.cu}</span></td>

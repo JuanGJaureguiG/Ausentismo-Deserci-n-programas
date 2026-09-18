@@ -105,6 +105,7 @@ td{padding:8px 10px;border-bottom:1px solid #EEF0EC;font-size:12.3px;vertical-al
 tr:hover td{background:#FAFAF8;}
 .cu-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;background:var(--bar-track);border:1px solid var(--border);color:var(--ink-soft);}
 .pct-cell{font-weight:600;}
+.pct-cell .cnt-sub{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-top:1px;}
 .pct-high{color:var(--danger);}
 .pct-mid{color:var(--accent);}
 .pct-low{color:var(--teal);}

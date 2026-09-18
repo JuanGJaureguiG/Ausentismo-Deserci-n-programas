@@ -276,19 +276,24 @@ function render() {
   }));
   document.getElementById('kpi-casos').textContent = totalCasos.toLocaleString('es-CO');
 
-  // Promedio por CU dentro del MISMO alcance filtrado que el resto del tablero
-  // (respeta Año, Semestre, CU y también el Programa seleccionado, igual que la gráfica)
+  // CU con mayor/menor tasa = el pico y el valle puntual (un solo periodo) dentro del alcance filtrado,
+  // igual a lo que muestra la gráfica — no un promedio.
   const cuScope = [...new Set(withData.map(p => p.cu))];
-  const avgByCu = cuScope.map(cu => {
-    const vals = withData.filter(p => p.cu === cu).map(p => p.avg);
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    return { k: cu, avg };
-  }).sort((a, b) => b.avg - a.avg);
+  const cuExtremes = cuScope.map(cu => {
+    const vals = [];
+    withData.filter(p => p.cu === cu).forEach(p => {
+      periods.forEach(per => {
+        const v = p.periods[per];
+        if (v && v.pct !== null && v.pct !== undefined) vals.push(v.pct);
+      });
+    });
+    return vals.length ? { k: cu, max: Math.max(...vals), min: Math.min(...vals) } : null;
+  }).filter(Boolean);
 
-  const mejorCu = avgByCu[0];
-  const peorCu = avgByCu[avgByCu.length - 1];
-  document.getElementById('kpi-cu').textContent = mejorCu ? `${mejorCu.k} (${mejorCu.avg.toFixed(2)}%)` : '—';
-  document.getElementById('kpi-cu-min').textContent = peorCu ? `${peorCu.k} (${peorCu.avg.toFixed(2)}%)` : '—';
+  const mejorCu = cuExtremes.length ? cuExtremes.reduce((a, b) => b.max > a.max ? b : a) : null;
+  const peorCu = cuExtremes.length ? cuExtremes.reduce((a, b) => b.min < a.min ? b : a) : null;
+  document.getElementById('kpi-cu').textContent = mejorCu ? `${mejorCu.k} (${mejorCu.max.toFixed(2)}%)` : '—';
+  document.getElementById('kpi-cu-min').textContent = peorCu ? `${peorCu.k} (${peorCu.min.toFixed(2)}%)` : '—';
 
   const criticos = withData.filter(p => p.avg > 12 && p.slope > 0.3);
   document.getElementById('kpi-criticos').textContent = criticos.length;

@@ -46,6 +46,9 @@ select.search-box option{color:var(--ink);background:#fff;padding:6px 8px;}
 .clear-all{margin-top:22px;width:100%;background:transparent;border:1px solid rgba(255,255,255,0.3);color:#DCE6EE;padding:9px;border-radius:3px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;}
 .clear-all:hover{border-color:var(--accent);color:var(--accent);}
 
+.toggle-all-btn{width:100%;background:transparent;border:1px dashed rgba(255,255,255,0.28);color:#93A7B8;padding:6px 8px;border-radius:3px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;margin-bottom:8px;}
+.toggle-all-btn:hover{border-color:var(--accent);color:var(--accent);}
+
 /* ---------- Main ---------- */
 .main{padding:26px 32px 60px;max-width:1440px;}
 

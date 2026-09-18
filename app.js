@@ -75,7 +75,32 @@ function buildSidebar() {
 
   const allPeriods = [...new Set(DATA.ausentismo.periods.concat(DATA.desercion.periods))];
   const anios = [...new Set(allPeriods.map(p => p.slice(0, 4)))].sort();
-  sidebar.appendChild(makeGroup('Año', chipGroup(anios, state.anio), true));
+
+  const anioWrap = document.createElement('div');
+  const anioToggleBtn = document.createElement('button');
+  anioToggleBtn.className = 'toggle-all-btn';
+  function updateAnioToggleLabel() {
+    anioToggleBtn.textContent = state.anio.size === anios.length ? 'Deseleccionar todos los años' : 'Seleccionar todos los años';
+  }
+  updateAnioToggleLabel();
+  const anioChips = chipGroup(anios, state.anio);
+  anioToggleBtn.addEventListener('click', () => {
+    const selectAll = state.anio.size !== anios.length;
+    const chipEls = anioChips.querySelectorAll('.chip');
+    if (selectAll) {
+      anios.forEach(a => state.anio.add(a));
+      chipEls.forEach(c => c.classList.add('active'));
+    } else {
+      state.anio.clear();
+      chipEls.forEach(c => c.classList.remove('active'));
+    }
+    updateAnioToggleLabel();
+    render();
+  });
+  anioChips.querySelectorAll('.chip').forEach(chip => chip.addEventListener('click', updateAnioToggleLabel));
+  anioWrap.appendChild(anioToggleBtn);
+  anioWrap.appendChild(anioChips);
+  sidebar.appendChild(makeGroup('Año', anioWrap, true));
 
   const semWrap = document.createElement('div');
   semWrap.className = 'chip-list';
@@ -113,6 +138,7 @@ function buildSidebar() {
     state.cu.clear(); state.anio.clear(); state.semestre.clear(); progSelected = '';
     document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.search-box').forEach(s => { s.value = ''; });
+    updateAnioToggleLabel();
     render();
   });
 }
